@@ -51,7 +51,7 @@
 # 
 # Before you get started on the project code, import the libraries and resources that you'll need.
 
-# In[2]:
+# In[1]:
 
 
 import cv2 # computer vision library
@@ -80,7 +80,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 #     IMAGE_DIR_TRAINING: the directory where our training image data is stored
 #     IMAGE_DIR_TEST: the directory where our test image data is stored
 
-# In[3]:
+# In[2]:
 
 
 # Image data directories
@@ -98,7 +98,7 @@ IMAGE_DIR_TEST = "traffic_light_images/test/"
 # ``` IMAGE_LIST[0][:]```.
 # 
 
-# In[4]:
+# In[3]:
 
 
 # Using the load_dataset function in helpers.py
@@ -120,7 +120,7 @@ IMAGE_LIST = helpers.load_dataset(IMAGE_DIR_TRAINING)
 # 
 # See if you can display at least one of each type of traffic light image – red, green, and yellow — and look at their similarities and differences.
 
-# In[5]:
+# In[4]:
 
 
 ## TODO: Write code to display an image in IMAGE_LIST (try finding a yellow traffic light!)
@@ -161,7 +161,7 @@ plt.imshow(selected_image)
 # 
 # It's very common to have square input sizes that can be rotated (and remain the same size), and analyzed in smaller, square patches. It's also important to make all your images the same size so that they can be sent through the same pipeline of classification steps!
 
-# In[6]:
+# In[5]:
 
 
 # This function should take in an RGB image and return a new, standardized version
@@ -187,7 +187,7 @@ def standardize_input(image):
 # <a id='task3'></a>
 # ### (IMPLEMENTATION): Implement one-hot encoding
 
-# In[7]:
+# In[6]:
 
 
 ## TODO: One hot encode an image label
@@ -220,7 +220,7 @@ def one_hot_encode(label):
 # 
 # One test function you'll find is: `test_one_hot(self, one_hot_function)` which takes in one argument, a one_hot_encode function, and tests its functionality. If your one_hot_label code does not work as expected, this test will print ot an error message that will tell you a bit about why your code failed. Once your code works, this should print out TEST PASSED.
 
-# In[8]:
+# In[7]:
 
 
 # Importing the tests
@@ -238,7 +238,7 @@ tests.test_one_hot(one_hot_encode)
 # This uses the functions you defined above to standardize the input and output, so those functions must be complete for this standardization to work!
 # 
 
-# In[9]:
+# In[8]:
 
 
 def standardize(image_list):
@@ -270,7 +270,7 @@ STANDARDIZED_LIST = standardize(IMAGE_LIST)
 # 
 # Display a standardized image from STANDARDIZED_LIST and compare it with a non-standardized image from IMAGE_LIST. Note that their sizes and appearance are different!
 
-# In[10]:
+# In[9]:
 
 
 ## TODO: Display a standardized image and its label
@@ -309,7 +309,7 @@ plt.imshow(standardized_image)
 # 
 # Below, a test image is converted from RGB to HSV colorspace and each component is displayed in an image.
 
-# In[11]:
+# In[10]:
 
 
 # Convert and image to HSV colorspace
@@ -352,7 +352,7 @@ ax4.imshow(v, cmap='gray')
 # 
 # From this feature, you should be able to estimate an image's label and classify it as either a red, green, or yellow traffic light. You may also define helper functions if they simplify your code.
 
-# In[12]:
+# In[119]:
 
 
 ## TODO: Create a brightness feature that takes in an RGB image and outputs a feature vector and/or value
@@ -402,15 +402,29 @@ def create_feature(rgb_image):
 
 # ## (Optional) Create more features to help accurately label the traffic light images
 
-# In[13]:
+# In[214]:
 
 
 # (Optional) Add more image analysis and create more features
 
+# Get single chanel avaerage of the image
+# for example, for image input as red channel image
+# this method will return average of red in scale of 0-255
+def get_single_channel_avg(image):
+    avg = 0
+    total = 1
+    for row in image:
+        for pixel in row:
+            if pixel != 0:
+                avg += pixel
+                total += 1 
+    return avg / total
+
+
 # Calculate the average of red, green, blue
 # Return averages of red, green, blue in tuple
 # of (avg_red, avg_green, avg_blue)
-def get_avg(rgb_image):
+def get_rgb_avg(rgb_image):
 
     avg_red = 0
     avg_green = 0
@@ -419,22 +433,32 @@ def get_avg(rgb_image):
     
     # Loop through red, blue, green images
     for i in range(3):
-        for row in rgb_image[:,:,i]:
-            for pixel in row:
-                if pixel != 0:
-                    if i == 0:
-                        avg_red += pixel
-                        total += 1
-                    if i == 1:
-                        avg_green += pixel
-                    if i == 2:
-                        avg_blue += pixel
-    
-    avg_red = avg_red / total
-    avg_green = avg_green / total
-    avg_blue = avg_blue / total
-    
+        if i == 0:
+            avg_red = get_single_channel_avg(rgb_image[:,:,i])
+        if i == 1:
+            avg_green = get_single_channel_avg(rgb_image[:,:,i])
+        if i == 2:
+            avg_blue = get_single_channel_avg(rgb_image[:,:,i])
+
     return (avg_red, avg_green, avg_blue)
+
+# Calculate the average of h, s, v
+# Return averages of red, green, blue in tuple
+# of (avg_h, avg_s, avg_v)
+def get_hsv_avg(rgb_image):
+    hsv = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2HSV)
+    
+    # HSV channels
+    h = hsv[:,:,0]
+    s = hsv[:,:,1]
+    v = hsv[:,:,2]
+    
+    avg_h = get_single_channel_avg(h)
+    avg_s = get_single_channel_avg(s)
+    avg_v = get_single_channel_avg(v)
+    return (avg_h, avg_s, avg_v)
+    
+    
 
 
 # ## (QUESTION 1): How do the features you made help you distinguish between the 3 classes of traffic light images?
@@ -457,24 +481,16 @@ def get_avg(rgb_image):
 # <a id='task8'></a>
 # ### (IMPLEMENTATION): Build a complete classifier 
 
-# In[15]:
+# In[215]:
 
 
 # This function should take in RGB image input
 # Analyze that image using your feature creation code and output a one-hot encoded label
+
 def estimate_label(rgb_image):
     
     # Set default image to be red
     image = [1,0,0]
-    
-    lower_red = np.array([180,34,150])
-    upper_red = np.array([250,100,210])
-    
-    lower_yellow = np.array([180,150,90])
-    upper_yellow = np.array([250,230,150])
-    
-    lower_green = np.array([47,192,189])
-    upper_green = np.array([60,233,222])
     
     feature_image = create_feature(rgb_image)
     
@@ -482,10 +498,41 @@ def estimate_label(rgb_image):
     # is not quite accurate to classify red and yellow
     # going to use this method to classify between red or yellow
     # vs green
-    avg_red, avg_green, avg_blue = get_avg(feature_image)
-    if avg_red < lower_red[0] and         avg_blue > lower_green[2]:
-        image = [0,0,1]
+    avg_red, avg_green, avg_blue = get_rgb_avg(feature_image)
+    avg_h, avg_s, avg_v = get_hsv_avg(feature_image)
+    
+#     print(avg_red, avg_green, avg_blue)
+#     print(avg_h, avg_s, avg_v)
+    
+    if avg_red < 160 and         avg_blue > 40 or         avg_h < 1 and avg_red < 1 or         avg_s < 25:
+        return [0,0,1]
+    
+    if avg_h < 60:
+        image = [0,1,0]
+        
     return image
+
+'''
+average hsv of yellow, red, and green colors
+
+yellow  21.0408163265 128.020408163 228.857142857
+        14.5434782609 93.9130434783 217.391304348
+        35.4038461538 121.365384615 196.5
+        103.888888889 7.22222222222 196.777777778
+        23.48 44.84 215.12
+
+red     167.805555556 198.083333333 223.916666667
+        166.755555556 62.9130434783 234.260869565
+        152.125 109.350877193 227.719298246
+        164.727272727 122.454545455 225.840909091
+        167.815789474 68.3157894737 223.236842105
+
+green   84.0 226.55 206.35
+        88.2285714286 187.971428571 213.828571429
+        82.2 177.9 186.6
+        88.4375 192.770833333 221.354166667
+        86.5625 141.609375 224.21875
+'''
 
 # Yellow
 # estimate_label(STANDARDIZED_LIST[725][0])
@@ -496,17 +543,17 @@ def estimate_label(rgb_image):
 
 # print()
 # estimate_label(STANDARDIZED_LIST[0][0])
-# create_feature(STANDARDIZED_LIST[5][0])
-# create_feature(STANDARDIZED_LIST[15][0])
-# create_feature(STANDARDIZED_LIST[20][0])
-# create_feature(STANDARDIZED_LIST[25][0])
+# estimate_label(STANDARDIZED_LIST[5][0])
+# estimate_label(STANDARDIZED_LIST[15][0])
+# estimate_label(STANDARDIZED_LIST[20][0])
+# estimate_label(STANDARDIZED_LIST[25][0])
 
 # print()
-estimate_label(STANDARDIZED_LIST[900][0])
-# create_feature(STANDARDIZED_LIST[905][0])
-# create_feature(STANDARDIZED_LIST[910][0])
-# create_feature(STANDARDIZED_LIST[915][0])
-# create_feature(STANDARDIZED_LIST[920][0])
+# estimate_label(STANDARDIZED_LIST[900][0])
+# estimate_label(STANDARDIZED_LIST[905][0])
+# estimate_label(STANDARDIZED_LIST[910][0])
+# estimate_label(STANDARDIZED_LIST[915][0])
+# estimate_label(STANDARDIZED_LIST[920][0])
 
 
 # ## Testing the classifier
@@ -522,7 +569,7 @@ estimate_label(STANDARDIZED_LIST[900][0])
 # Below, we load in the test dataset, standardize it using the `standardize` function you defined above, and then **shuffle** it; this ensures that order will not play a role in testing accuracy.
 # 
 
-# In[16]:
+# In[216]:
 
 
 # Using the load_dataset function in helpers.py
@@ -542,7 +589,7 @@ random.shuffle(STANDARDIZED_TEST_LIST)
 # 
 # This code stores all the misclassified images, their predicted labels, and their true labels, in a list called `MISCLASSIFIED`. This code is used for testing and *should not be changed*.
 
-# In[17]:
+# In[217]:
 
 
 # Constructs a list of misclassified images given a list of test images and their labels
@@ -592,21 +639,26 @@ print("Number of misclassified images = " + str(len(MISCLASSIFIED)) +' out of '+
 # 
 # Visualize some of the images you classified wrong (in the `MISCLASSIFIED` list) and note any qualities that make them difficult to classify. This will help you identify any weaknesses in your classification algorithm.
 
-# In[18]:
+# In[196]:
 
 
 # Visualize misclassified example(s)
 ## TODO: Display an image in the `MISCLASSIFIED` list 
 ## TODO: Print out its predicted label - to see what the image *was* incorrectly classified as
-image_num = 0
-mis_im = MISCLASSIFIED[image_num][0]
-predicted_label = MISCLASSIFIED[image_num][1]
-actual_label = MISCLASSIFIED[image_num][2]
 
+total_misclassified = len(MISCLASSIFIED)
 
-plt.imshow(mis_im)
-print(predicted_label)
-print(actual_label)
+for i in range(total_misclassified):
+    mis_im = MISCLASSIFIED[i][0]
+    predicted_label = MISCLASSIFIED[i][1]
+    actual_label = MISCLASSIFIED[i][2]
+    estimate_label(mis_im)
+    
+    print(predicted_label, actual_label)
+    print()
+    
+    
+
 
 
 # ---
@@ -625,7 +677,7 @@ print(actual_label)
 # 
 # Note: this is not an all encompassing test, but its a good indicator that, if you pass, you are on the right track! This iterates through your list of misclassified examples and checks to see if any red traffic lights have been mistakenly labelled [0, 1, 0] (green).
 
-# In[154]:
+# In[213]:
 
 
 # Importing the tests
